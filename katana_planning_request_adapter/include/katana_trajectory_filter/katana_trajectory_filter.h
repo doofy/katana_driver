@@ -28,10 +28,7 @@
 #include <ros/ros.h>
 
 #include <trajectory_msgs/JointTrajectory.h>
-#include <arm_navigation_msgs/JointTrajectoryWithLimits.h>
 #include <moveit_msgs/JointLimits.h>
-#include <arm_navigation_msgs/FilterJointTrajectory.h>
-#include <arm_navigation_msgs/FilterJointTrajectoryWithConstraints.h>
 
 #include <spline_smoother/spline_smoother.h>
 #include <pluginlib/class_list_macros.h>
