@@ -30,10 +30,7 @@
 #include <trajectory_msgs/JointTrajectory.h>
 #include <moveit_msgs/JointLimits.h>
 
-#include <spline_smoother/spline_smoother.h>
 #include <pluginlib/class_list_macros.h>
-
-#include <spline_smoother/spline_smoother_utils.h>
 
 #include <vector>
 #include <set>
