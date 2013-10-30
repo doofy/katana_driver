@@ -156,7 +156,7 @@ catkin_package(
 # catkin_add_nosetests(test)
 
 # Add package dependencies
-find_package(catkin REQUIRED COMPONENTS moveit_ros_planning trajectory_msgs industrial_trajectory_filters)
+find_package(catkin REQUIRED COMPONENTS moveit_ros_planning trajectory_msgs)
 
 # Include location of your package's header files
 include_directories(include ${catkin_INCLUDE_DIRS})
