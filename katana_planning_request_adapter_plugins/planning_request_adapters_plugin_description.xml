@@ -1,7 +1,7 @@
-<library path="libmoveit_trajectory_filter_plugins">
+<library path="libmoveit_katana_planning_request_adapter_plugins">
 
-  <class name="katana_planning_request_adapter_plugins/KatanaTrajectoryFilter"
-        type="katana_planning_request_adapter_plugins::KatanaTrajectoryFilterAdapter"
+  <class name="katana_planner_request_adapters/TrajectoryFilter"
+        type="katana_planner_request_adapters::TrajectoryFilter"
         base_class_type="planning_request_adapter::PlanningRequestAdapter">
     <description>
         Katana Trajectory Filter Plugin

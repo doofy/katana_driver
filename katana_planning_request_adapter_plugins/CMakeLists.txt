@@ -162,8 +162,8 @@ find_package(catkin REQUIRED COMPONENTS moveit_ros_planning trajectory_msgs)
 include_directories(include ${catkin_INCLUDE_DIRS})
 
 # Build plugin library
-add_library(moveit_trajectory_filter_plugins src/trajectory_filter.cpp)
-target_link_libraries(moveit_trajectory_filter_plugins ${catkin_LIBRARIES})
+add_library(moveit_katana_planning_request_adapter_plugins src/trajectory_filter.cpp)
+target_link_libraries(moveit_katana_planning_request_adapter_plugins ${catkin_LIBRARIES})
 
 # Make plugin library available to other packages
 catkin_package(
