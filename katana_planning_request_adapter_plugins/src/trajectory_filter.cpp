@@ -92,6 +92,11 @@ namespace katana_planner_request_adapters
           robot_trajectory::RobotTrajectoryPtr &trajectory_out,
           const size_t num_points_delete) const
       {
+        for (int i = 0; i < 16 && i < trajectory_in->getWayPointCount(); i++)
+        {
+            trajectory_out->addSuffixWayPoint(trajectory_in->getWayPoint(i), 1);
+        }
+/*
         size_t num_points = trajectory_in->getWayPointCount();
         std::vector<std::pair<size_t, double> > segment_durations(num_points - 1);
 
@@ -158,6 +163,7 @@ namespace katana_planner_request_adapters
             trajectory_out->addSuffixWayPoint(trajectory_in->getWayPoint(i), 1);
           }
         }
+*/
       }
 
     public:
@@ -183,12 +189,6 @@ namespace katana_planner_request_adapters
 
         ROS_INFO("planner result %d", result);
 
-        for (size_t i = 0; i < res.trajectory_->getWayPointDurations().size(); i++) {
-          //res.trajectory_->setWayPointDurationFromPrevious(i, 0.0 + i);
-          res.trajectory_->setWayPointDurationFromPrevious(i, 0.0);
-          ROS_INFO("duration %zu = %.10f", i, res.trajectory_->getWayPointDurationFromPrevious(i));
-        }
-
         ROS_INFO("Input Trajectory WayPoint Count: %zu", res.trajectory_->getWayPointCount());
 
         planning_interface::MotionPlanResponse newres;
@@ -197,15 +197,18 @@ namespace katana_planner_request_adapters
         const std::string &group = res.trajectory_->getGroupName();
         boost::shared_ptr<robot_trajectory::RobotTrajectory> newtrajectory
           (new robot_trajectory::RobotTrajectory(kmodel, group));
+
+        result = smooth(res.trajectory_, newtrajectory);
+
         newres.trajectory_ = newtrajectory;
 
-        //result = smooth(res.trajectory_, newres.trajectory_);
+        result = planner(planning_scene, req, newres);
 
         ROS_INFO("planner result new trajectory %d", result);
 
-        ROS_INFO("Output Trajectory WayPoint Count: %zu", res.trajectory_->getWayPointCount());
+        ROS_INFO("Output Trajectory WayPoint Count: %zu", newres.trajectory_->getWayPointCount());
+        ROS_INFO("newTrajectory WayPoint Count: %zu", newtrajectory->getWayPointCount());
 
-        result = planner(planning_scene, req, newres);
 
         return result;
       }
