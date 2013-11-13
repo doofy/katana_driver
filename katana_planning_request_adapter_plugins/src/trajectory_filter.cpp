@@ -94,7 +94,7 @@ namespace katana_planner_request_adapters
       {
         size_t i;
         size_t num_points = trajectory_in->getWayPointCount();
-        std::vector<std::pair<size_t, double> > segment_durations(num_points - 1);
+        std::vector<std::pair<size_t, double> > segment_durations(num_points);
 
         // calculate segment_durations
         for (i = 0; i < num_points; ++i)
@@ -102,20 +102,12 @@ namespace katana_planner_request_adapters
           double duration = trajectory_in->getWayPointDurationFromPrevious(i);
           ROS_INFO("duration = %f", duration);
 
-          //segment_durations[i] = std::pair<size_t, double>(i, duration);
+          segment_durations[i] = std::pair<size_t, double>(i, duration);
         }
 
-        //for (size_t i = 0; i < segment_durations.size(); i++)
-          //ROS_INFO("segment_durations[%3zu] = <%3zu, %f>", i, segment_durations[i].first, segment_durations[i].second);
+        for (size_t i = 0; i < segment_durations.size(); i++)
+          ROS_INFO("segment_durations[%3zu] = <%3zu, %f>", i, segment_durations[i].first, segment_durations[i].second);
 
-        ROS_INFO("out count %zu", trajectory_out.getWayPointCount());
-        trajectory_out.clear();
-        for (i = 0; i < 16; i++) {
-          trajectory_out.addSuffixWayPoint(trajectory_in->getWayPointPtr(i), 1);
-        }
-
-        ROS_INFO("out count %zu", trajectory_out.getWayPointCount());
-/*
         // sort segment_durations by their duration, in ascending order
         std::vector<std::pair<size_t, double> > sorted_segment_durations = segment_durations;
         std::sort(sorted_segment_durations.begin(),
@@ -166,7 +158,6 @@ boost::bind(&std::pair<size_t, double>::second, _1) < boost::bind(&std::pair<siz
             trajectory_out.addSuffixWayPoint(trajectory_in->getWayPoint(i), 0);
           }
         }
-*/
       }
 
     public:
