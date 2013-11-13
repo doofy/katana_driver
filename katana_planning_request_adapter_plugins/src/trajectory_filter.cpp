@@ -50,7 +50,7 @@ namespace katana_planner_request_adapters
       static const size_t DELETE_CHUNK_SIZE = 10;
 
       bool smooth(const robot_trajectory::RobotTrajectoryPtr &trajectory_in,
-          robot_trajectory::RobotTrajectoryPtr &trajectory_out) const
+          robot_trajectory::RobotTrajectory &trajectory_out) const
       {
         size_t num_points = trajectory_in->getWayPointCount();
         //trajectory_out = trajectory_in;
@@ -67,17 +67,17 @@ namespace katana_planner_request_adapters
         {
           size_t num_points_delete = num_points - MAX_NUM_POINTS;
 
-          if (num_points_delete > DELETE_CHUNK_SIZE)
+        if (num_points_delete > DELETE_CHUNK_SIZE)
             num_points_delete = DELETE_CHUNK_SIZE;
           else if (num_points_delete <= 0)
             break;
 
           remove_smallest_segments(trajectory_in, trajectory_out, num_points_delete);
-          num_points = trajectory_out->getWayPointCount();
+          num_points = trajectory_out.getWayPointCount();
         }
 
         // delete all velocities and accelerations so they will be re-computed by Katana
-        for (size_t i = 0; i < trajectory_out->getWayPointCount(); ++i)
+        for (size_t i = 0; i < trajectory_out.getWayPointCount(); ++i)
         {
           // TODO check if port to setVariableVelocities is correct
           //trajectory_out.getWayPoint(i).setVariableVelocities(0);
@@ -89,36 +89,38 @@ namespace katana_planner_request_adapters
 
       void remove_smallest_segments(
           const robot_trajectory::RobotTrajectoryPtr &trajectory_in,
-          robot_trajectory::RobotTrajectoryPtr &trajectory_out,
+          robot_trajectory::RobotTrajectory &trajectory_out,
           const size_t num_points_delete) const
       {
-        for (int i = 0; i < 16 && i < trajectory_in->getWayPointCount(); i++)
-        {
-            trajectory_out->addSuffixWayPoint(trajectory_in->getWayPoint(i), 1);
-        }
-/*
+        size_t i;
         size_t num_points = trajectory_in->getWayPointCount();
         std::vector<std::pair<size_t, double> > segment_durations(num_points - 1);
 
         // calculate segment_durations
-        for (size_t i = 0; i < num_points; ++i)
+        for (i = 0; i < num_points; ++i)
         {
-          //double duration = trajectory_in->getWaypointDurationFromStart(i + 1)
-              //- trajectory_in->getWaypointDurationFromStart(i);
-          //double duration = trajectory_in->getWayPointDurationFromPrevious(i);
-          double duration = trajectory_in->getWayPointDurations().at(i);
+          double duration = trajectory_in->getWayPointDurationFromPrevious(i);
           ROS_INFO("duration = %f", duration);
 
-          segment_durations[i] = std::pair<size_t, double>(i, duration);
+          //segment_durations[i] = std::pair<size_t, double>(i, duration);
         }
 
-        for (size_t i = 0; i < segment_durations.size(); i++)
-          ROS_INFO("segment_durations[%3zu] = <%3zu, %f>", i, segment_durations[i].first, segment_durations[i].second);
+        //for (size_t i = 0; i < segment_durations.size(); i++)
+          //ROS_INFO("segment_durations[%3zu] = <%3zu, %f>", i, segment_durations[i].first, segment_durations[i].second);
 
+        ROS_INFO("out count %zu", trajectory_out.getWayPointCount());
+        trajectory_out.clear();
+        for (i = 0; i < 16; i++) {
+          trajectory_out.addSuffixWayPoint(trajectory_in->getWayPointPtr(i), 1);
+        }
+
+        ROS_INFO("out count %zu", trajectory_out.getWayPointCount());
+/*
         // sort segment_durations by their duration, in ascending order
         std::vector<std::pair<size_t, double> > sorted_segment_durations = segment_durations;
-        std::sort(sorted_segment_durations.begin(), sorted_segment_durations.end(), boost::bind(&std::pair<size_t, double>::second, _1)
-            < boost::bind(&std::pair<size_t, double>::second, _2));
+        std::sort(sorted_segment_durations.begin(),
+sorted_segment_durations.end(),
+boost::bind(&std::pair<size_t, double>::second, _1) < boost::bind(&std::pair<size_t, double>::second, _2));
 
         for (size_t i = 0; i < sorted_segment_durations.size(); i++)
           ROS_INFO("sorted_segment_durations[%3zu] = <%3zu, %f>", i, sorted_segment_durations[i].first, sorted_segment_durations[i].second);
@@ -153,14 +155,15 @@ namespace katana_planner_request_adapters
         for (std::set<size_t>::iterator it = delete_set.begin(); it != delete_set.end(); it++)
           ROS_INFO("delete set entry: %zu", *it);
 
-        trajectory_out->clear();
+        //trajectory_out.clear();
         for (size_t i = 0; i < num_points; i++)
         {
           if (delete_set.find(i) == delete_set.end())
           {
             // segment i is not in the delete set -. copy
             //TODO fix second parameter: dt
-            trajectory_out->addSuffixWayPoint(trajectory_in->getWayPoint(i), 1);
+          //double duration = trajectory_in->getWayPointDurationFromPrevious(i);
+            trajectory_out.addSuffixWayPoint(trajectory_in->getWayPoint(i), 0);
           }
         }
 */
@@ -187,28 +190,19 @@ namespace katana_planner_request_adapters
 
         result = planner(planning_scene, req, res);
 
-        ROS_INFO("planner result %d", result);
+        //ROS_INFO("planner result %d", result);
 
         ROS_INFO("Input Trajectory WayPoint Count: %zu", res.trajectory_->getWayPointCount());
 
-        planning_interface::MotionPlanResponse newres;
-
         const robot_model::RobotModelConstPtr &kmodel = res.trajectory_->getRobotModel();
         const std::string &group = res.trajectory_->getGroupName();
-        boost::shared_ptr<robot_trajectory::RobotTrajectory> newtrajectory
-          (new robot_trajectory::RobotTrajectory(kmodel, group));
+        robot_trajectory::RobotTrajectory newtrajectory(kmodel, group);
 
         result = smooth(res.trajectory_, newtrajectory);
 
-        newres.trajectory_ = newtrajectory;
+        res.trajectory_->swap(newtrajectory);
 
-        result = planner(planning_scene, req, newres);
-
-        ROS_INFO("planner result new trajectory %d", result);
-
-        ROS_INFO("Output Trajectory WayPoint Count: %zu", newres.trajectory_->getWayPointCount());
-        ROS_INFO("newTrajectory WayPoint Count: %zu", newtrajectory->getWayPointCount());
-
+        ROS_INFO("Output Trajectory WayPoint Count: %zu", res.trajectory_->getWayPointCount());
 
         return result;
       }
