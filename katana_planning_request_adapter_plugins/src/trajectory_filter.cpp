@@ -53,7 +53,12 @@ namespace katana_planner_request_adapters
           robot_trajectory::RobotTrajectory &trajectory_out) const
       {
         size_t num_points = trajectory_in->getWayPointCount();
-        //trajectory_out = trajectory_in;
+
+        const robot_model::RobotModelConstPtr &kmodel = trajectory_in->getRobotModel();
+        const std::string &group = trajectory_in->getGroupName();
+        robot_trajectory::RobotTrajectory trajectory_mid(kmodel, group);
+
+        trajectory_out.append(*trajectory_in, 0.0);
 
         //if (!spline_smoother::checkTrajectoryConsistency(trajectory_out))
           //return false;
@@ -67,46 +72,58 @@ namespace katana_planner_request_adapters
         {
           size_t num_points_delete = num_points - MAX_NUM_POINTS;
 
+        for (size_t i = 0; i < trajectory_out.getWayPointCount(); ++i)
+        {
+          double duration = trajectory_out.getWayPointDurationFromPrevious(i);
+          ROS_INFO("duration %zu = %f", i, duration);
+        }
+
         if (num_points_delete > DELETE_CHUNK_SIZE)
             num_points_delete = DELETE_CHUNK_SIZE;
           else if (num_points_delete <= 0)
             break;
 
-          remove_smallest_segments(trajectory_in, trajectory_out, num_points_delete);
+          trajectory_mid.swap(trajectory_out);
+
+
+          remove_smallest_segments(trajectory_mid, trajectory_out, num_points_delete);
           num_points = trajectory_out.getWayPointCount();
         }
 
         // delete all velocities and accelerations so they will be re-computed by Katana
-        for (size_t i = 0; i < trajectory_out.getWayPointCount(); ++i)
+        for (int j = 0; j < trajectory_out.getWayPointCount(); ++j)
         {
-          // TODO check if port to setVariableVelocities is correct
-          //trajectory_out.getWayPoint(i).setVariableVelocities(0);
-          // TODO check if port to setVariableAccelerations is correct
-          //trajectory_out.getWayPoint(i).setVariableAccelerations(0);
+            for (int k = 0; k < trajectory_out.getWayPoint(j).getVariableCount(); k++) {
+                // TODO check if port to setVariableVelocities is correct
+                trajectory_out.getWayPointPtr(j)->setVariableVelocity(k, 0.0);
+
+                // TODO check if port to setVariableAccelerations is correct
+                trajectory_out.getWayPointPtr(j)->setVariableAcceleration(k, 0.0);
+            }
         }
         return true;
       }
 
       void remove_smallest_segments(
-          const robot_trajectory::RobotTrajectoryPtr &trajectory_in,
+          const robot_trajectory::RobotTrajectory &trajectory_in,
           robot_trajectory::RobotTrajectory &trajectory_out,
           const size_t num_points_delete) const
       {
         size_t i;
-        size_t num_points = trajectory_in->getWayPointCount();
+        size_t num_points = trajectory_in.getWayPointCount();
         std::vector<std::pair<size_t, double> > segment_durations(num_points);
 
         // calculate segment_durations
         for (i = 0; i < num_points; ++i)
         {
-          double duration = trajectory_in->getWayPointDurationFromPrevious(i);
-          ROS_INFO("duration = %f", duration);
+          double duration = trajectory_in.getWayPointDurationFromPrevious(i);
+          //ROS_INFO("duration %d = %f", i, duration);
 
           segment_durations[i] = std::pair<size_t, double>(i, duration);
         }
 
-        for (size_t i = 0; i < segment_durations.size(); i++)
-          ROS_INFO("segment_durations[%3zu] = <%3zu, %f>", i, segment_durations[i].first, segment_durations[i].second);
+        //for (size_t i = 0; i < segment_durations.size(); i++)
+          //ROS_INFO("segment_durations[%3zu] = <%3zu, %f>", i, segment_durations[i].first, segment_durations[i].second);
 
         // sort segment_durations by their duration, in ascending order
         std::vector<std::pair<size_t, double> > sorted_segment_durations = segment_durations;
@@ -114,8 +131,8 @@ namespace katana_planner_request_adapters
 sorted_segment_durations.end(),
 boost::bind(&std::pair<size_t, double>::second, _1) < boost::bind(&std::pair<size_t, double>::second, _2));
 
-        for (size_t i = 0; i < sorted_segment_durations.size(); i++)
-          ROS_INFO("sorted_segment_durations[%3zu] = <%3zu, %f>", i, sorted_segment_durations[i].first, sorted_segment_durations[i].second);
+        //for (size_t i = 0; i < sorted_segment_durations.size(); i++)
+          //ROS_INFO("sorted_segment_durations[%3zu] = <%3zu, %f>", i, sorted_segment_durations[i].first, sorted_segment_durations[i].second);
 
         // delete the smallest segments
         std::set<size_t> delete_set;
@@ -144,18 +161,18 @@ boost::bind(&std::pair<size_t, double>::second, _1) < boost::bind(&std::pair<siz
           delete_set.insert(point_to_delete);
         }
 
-        for (std::set<size_t>::iterator it = delete_set.begin(); it != delete_set.end(); it++)
-          ROS_INFO("delete set entry: %zu", *it);
+        //for (std::set<size_t>::iterator it = delete_set.begin(); it != delete_set.end(); it++)
+          //ROS_INFO("delete set entry: %zu", *it);
 
-        //trajectory_out.clear();
+        trajectory_out.clear();
         for (size_t i = 0; i < num_points; i++)
         {
           if (delete_set.find(i) == delete_set.end())
           {
             // segment i is not in the delete set -. copy
-            //TODO fix second parameter: dt
-          //double duration = trajectory_in->getWayPointDurationFromPrevious(i);
-            trajectory_out.addSuffixWayPoint(trajectory_in->getWayPoint(i), 0);
+            double duration = trajectory_in.getWayPointDurationFromPrevious(i);
+            //double duration = trajectory_in.getWaypointDurationFromStart(i + 1) - trajectory_in.getWaypointDurationFromStart(i);
+            trajectory_out.addSuffixWayPoint(trajectory_in.getWayPoint(i), duration);
           }
         }
       }
